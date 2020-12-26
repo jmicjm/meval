@@ -11,6 +11,21 @@ bool isOp(char c);
 //returns pointer to end of parenthesis starting at b
 const char* paEnd(const char* b, const char* e);
 
+const char* absEnd(const char* b, const char* e)
+{
+	b++;
+	while (b != e)
+	{
+		if (*b == '|') { break; }
+		if (*b == '(')
+		{
+			b = paEnd(b, e);
+		}
+		b++;
+	}
+	return b;
+}
+
 //parses real value starting from b, stores it in val and returns pointer to last char of value
 const char* num(const char* b, const char* e, double& val);
 
@@ -70,6 +85,11 @@ double eval(const char* b, const char* e)
 	{
 		s = eval(b + 1, paEnd(b, e));
 		b = paEnd(b, e);
+	}
+	else if (*b == '|')//absolute sub expression
+	{
+		s = abs(eval(b + 1, absEnd(b, e)));
+		b = absEnd(b, e);
 	}
 	else if (isalpha(*b))//functions and constants
 	{
@@ -238,6 +258,10 @@ const char* nextRank(const char* b, const char* e, char op)
 		if (*b == '(')
 		{
 			b = paEnd(b, e);
+		}
+		if (*b == '|')
+		{
+			b = absEnd(b, e);
 		}
 		if (!l_op)//handle expression like x*-y
 		{
