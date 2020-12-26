@@ -132,18 +132,41 @@ fidp fn[] =
 
 const char* fid(const char* b, const char* e, int& id)
 {
-
-
 	id = -1;
 	for (int i = 0; i < sizeof(fn)/sizeof(fidp); i++)
 	{
-		if (e - b < strlen(fn[i].fname) - 1) { continue; }
-		bool r = memcmp(b, fn[i].fname, strlen(fn[i].fname)-1);	
+		if (e - b < strlen(fn[i].fname)) { continue; }
+		bool r = memcmp(b, fn[i].fname, strlen(fn[i].fname));	
 		if (r == 0) { id = i; }
-	}
-	
+	}	
 	
 	if (id >= 0) { b += strlen(fn[id].fname) - 1; }
+	return b;
+}
+
+struct cidv
+{
+	const char* cname;
+	double cval;
+};
+
+cidv c[]
+{
+	{"pi", acos(-1.0)},
+	{"e", exp(1.0)}
+};
+
+const char* cid(const char* b, const char* e, int& id)
+{
+	id = -1;
+	for (int i = 0; i < sizeof(c) / sizeof(cidv); i++)
+	{
+		if (e - b < strlen(c[i].cname)) { continue; }
+		bool r = memcmp(b, c[i].cname, strlen(c[i].cname));
+		if (r == 0) { id = i; }
+	}
+
+	if (id >= 0) { b += strlen(c[id].cname) - 1; }
 	return b;
 }
 
@@ -178,8 +201,28 @@ inline double eval(const char* b, const char* e)
 		b = fid(b, e, id);
 		if (id >= 0)
 		{
-			s = fn[id].fptr(eval(b + 1, paEnd(b+1, e))); 
-			b = paEnd(b + 1, e);	
+			b++;
+			if (*b == '(')
+			{
+				s = fn[id].fptr(eval(b, paEnd(b, e)));
+				b = paEnd(b, e);
+			}
+			else
+			{
+				return NAN;
+			}
+		}
+		else
+		{
+			b = cid(b, e, id);
+			if (id >= 0)
+			{
+				s = c[id].cval;
+			}
+			else
+			{
+				return NAN;
+			}
 		}
 	}
 	else
@@ -188,6 +231,8 @@ inline double eval(const char* b, const char* e)
 	}
 
 	s *= s_mul;
+
+	std::cout << "s: " << s << '\n';
 
 	b++;
 	
