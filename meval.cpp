@@ -110,11 +110,11 @@ double eval(const char* b, const char* e)
 	while (b < e)
 	{
 		char op;
-		if (!sign_op)
+		if (!sign_op && isOp(*b))
 		{
 			op = *b++;
 		}
-		else
+		else//implicit multiplication eg. 2pi, -pi
 		{
 			op = '*';
 			sign_op = false;
