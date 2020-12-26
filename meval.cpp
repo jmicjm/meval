@@ -24,13 +24,23 @@ struct fidp
 	const char* fname;
 	double (*fptr)(double);
 };
+double cot(double x) { return cos(x) / sin(x); }
 fidp fn[] =
 {
 	{"sin", sin},
 	{"cos", cos},
 	{"tan", tan},
-	{"abs", abs},
+	{"cot", cot},
+	
 	{"log", log},
+	{"ln", log},
+	{"log10", log10},
+	{"log2", log2},
+
+	{"sqrt", sqrt},
+	{"cbrt", cbrt},
+
+	{"abs", abs},
 	{"floor", floor},
 	{"ceil", ceil},
 	{"round", round}
