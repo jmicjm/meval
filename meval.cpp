@@ -106,6 +106,11 @@ double eval(const char* b, const char* e)
 		return NAN;
 	}
 	b++;
+	if (*b == '!')//factorial
+	{
+		s = tgamma(s + 1);
+		b++;
+	}
 
 	while (b < e)
 	{
