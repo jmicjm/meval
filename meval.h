@@ -8,13 +8,13 @@
 int opRank(char op)
 {
 	if (op == '+' || op == '-') { return 1; }
-	if (op == '*' || op == '/') { return 2; }
+	if (op == '*' || op == '/' || op == '%') { return 2; }
 	if (op == '^') { return 3; }
 	return 999;
 }
 bool isOp(char c)
 {
-	return c =='+' || c == '-' || c == '*' || c == '/' || c  == '^';
+	return c =='+' || c == '-' || c == '*' || c == '/' || c == '%' || c  == '^';
 }
 
 const char* paEnd(const char* b, const char* e)
@@ -75,13 +75,15 @@ double calc(double l, char op, double r)
 		case '-':
 			return l - r;
 		case '*':
-			return r * l;
+			return l * r;
 		case '/':
-			return r / l;
+			return l / r;
+		case '%':
+			return fmod(l,r);
 		case '^':
 			return pow(l, r);
 	}
-	//return 1.f / 0;
+	return NAN;
 }
 
 const char* nextRank(const char* b, const char* e, char op)
@@ -93,7 +95,7 @@ const char* nextRank(const char* b, const char* e, char op)
 		{
 			b = paEnd(b, e);
 		}
-		if (non_op_c > 0)
+		if (non_op_c > 0)//handle expression like x*-2
 		{
 			if (op == '^')
 			{
