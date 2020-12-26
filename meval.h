@@ -88,14 +88,14 @@ double calc(double l, char op, double r)
 
 const char* nextRank(const char* b, const char* e, char op)
 {
-	unsigned int non_op_c = 0;
+	bool l_op = true;
 	while (b != e)
 	{
 		if (*b == '(')
 		{
 			b = paEnd(b, e);
 		}
-		if (non_op_c > 0)//handle expression like x*-y
+		if (!l_op)//handle expression like x*-y
 		{
 			if (op == '^')
 			{
@@ -106,7 +106,7 @@ const char* nextRank(const char* b, const char* e, char op)
 				if (opRank(*b) <= opRank(op)) { break; }
 			}
 		}
-		if (!isOp(*b)) { non_op_c++; }
+		l_op = isOp(*b);
 		b++;
 	}
 	return b;
@@ -229,11 +229,7 @@ inline double eval(const char* b, const char* e)
 	{
 		return NAN;
 	}
-
 	s *= s_mul;
-
-	std::cout << "s: " << s << '\n';
-
 	b++;
 	
 	while (b < e)
