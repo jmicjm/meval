@@ -95,7 +95,7 @@ const char* nextRank(const char* b, const char* e, char op)
 		{
 			b = paEnd(b, e);
 		}
-		if (non_op_c > 0)//handle expression like x*-2
+		if (non_op_c > 0)//handle expression like x*-y
 		{
 			if (op == '^')
 			{
@@ -112,6 +112,40 @@ const char* nextRank(const char* b, const char* e, char op)
 	return b;
 }
 
+struct fidp
+{
+	const char* fname;
+	double (*fptr)(double);
+};
+
+fidp fn[] =
+{
+	{"sin", sin},
+	{"cos", cos},
+	{"tan", tan},
+	{"abs", abs},
+	{"log", log},
+	{"floor", floor},
+	{"ceil", ceil},
+	{"round", round}
+};
+
+const char* fid(const char* b, const char* e, int& id)
+{
+
+
+	id = -1;
+	for (int i = 0; i < sizeof(fn)/sizeof(fidp); i++)
+	{
+		if (e - b < strlen(fn[i].fname) - 1) { continue; }
+		bool r = memcmp(b, fn[i].fname, strlen(fn[i].fname)-1);	
+		if (r == 0) { id = i; }
+	}
+	
+	
+	if (id >= 0) { b += strlen(fn[id].fname) - 1; }
+	return b;
+}
 
 
 inline double eval(const char* b, const char* e)
@@ -137,6 +171,20 @@ inline double eval(const char* b, const char* e)
 	{
 		s = eval(b + 1, paEnd(b, e));
 		b = paEnd(b, e);
+	}
+	else if (isalpha(*b))
+	{
+		int id;
+		b = fid(b, e, id);
+		if (id >= 0)
+		{
+			s = fn[id].fptr(eval(b + 1, paEnd(b+1, e))); 
+			b = paEnd(b + 1, e);	
+		}
+	}
+	else
+	{
+		return NAN;
 	}
 
 	s *= s_mul;
@@ -168,11 +216,6 @@ inline double eval(std::string e)
 		p.push_back(e[i]);
 
 	}
-	std::cout << "preproc: " << p << '\n';
-
-
 
 	return eval(p.data(), p.data() + p.size());
 }
-
-
