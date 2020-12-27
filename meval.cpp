@@ -4,6 +4,8 @@
 #include <cctype>
 #include <cmath>
 
+#include <iostream>
+
 int opRank(char op);
 
 bool isOp(char c);
@@ -78,7 +80,7 @@ double eval(const char* b, const char* e)
 	}
 	else if (*b == '(')//sub expression
 	{
-		s = eval(b + 1, paEnd(b, e));
+		s = eval(b+1, paEnd(b, e));
 		b = paEnd(b, e);
 	}
 	else if (isalpha(*b))//functions and constants
@@ -90,7 +92,7 @@ double eval(const char* b, const char* e)
 			b++;
 			if (*b == '(')
 			{
-				s = fn[id].fptr(eval(b, paEnd(b, e)));
+				s = fn[id].fptr(eval(b+1, paEnd(b, e)));
 				b = paEnd(b, e);
 			}
 			else
