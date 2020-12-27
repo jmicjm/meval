@@ -26,25 +26,31 @@ struct fidp
 	double (*fptr)(double);
 };
 double cot(double x) { return cos(x) / sin(x); }
+double acot(double x) { return acos(-1.0)/2 - std::atan(x); }
 fidp fn[] =
 {
-	{"sin", sin},
-	{"cos", cos},
-	{"tan", tan},
+	{"sin", std::sin},
+	{"cos", std::cos},
+	{"tan", std::tan},
 	{"cot", cot},
+
+	{"asin", std::asin},
+	{"acos", std::acos},
+	{"atan", std::atan},
+	{"acot", acot},
 	
-	{"log", log},
-	{"ln", log},
-	{"log10", log10},
-	{"log2", log2},
+	{"log", std::log},
+	{"ln", std::log},
+	{"log10", std::log10},
+	{"log2", std::log2},
 
-	{"sqrt", sqrt},
-	{"cbrt", cbrt},
+	{"sqrt", std::sqrt},
+	{"cbrt", std::cbrt},
 
-	{"abs", abs},
-	{"floor", floor},
-	{"ceil", ceil},
-	{"round", round}
+	{"abs", std::fabs},
+	{"floor", std::floor},
+	{"ceil", std::ceil},
+	{"round", std::round}
 };
 //parses function name starting from b, stores id in id and returns pointer to last char of function name
 const char* fid(const char* b, const char* e, int& id);
