@@ -4,7 +4,6 @@
 #include <cctype>
 #include <cmath>
 
-#include <iostream>
 
 int opRank(char op);
 
@@ -153,8 +152,7 @@ double eval(const std::string& e)
 
 	for (int i = 0; i < e.size(); i++)
 	{
-		if (e[i] == ' ') { continue; }
-		p.push_back(e[i]);
+		if (e[i] != ' ') { p.push_back(e[i]); }
 	}
 
 	return eval(p.data(), p.data() + p.size());
