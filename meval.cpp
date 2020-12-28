@@ -16,19 +16,15 @@ double add(double l, double r) { return l + r; }
 double sub(double l, double r) { return l - r; }
 double mul(double l, double r) { return l * r; }
 double div(double l, double r) { return l / r; }
-double neq(double l, double r) { return l != r; }
-double eq(double l, double r) { return l == r; }
-std::array<op, 8> operators =
+std::array<op, 6> operators =
 {
 	{
 	{"+", 1, true,  add      },
 	{"-", 1, true,  sub      },
-	{"xx", 2, true,  mul      },
+	{"*", 2, true,  mul      },
 	{"/", 2, true,  div      },
 	{"%", 2, true,  std::fmod},
 	{"^", 3, false, std::pow },
-	{"!=", 0, false, neq },
-	{"==", 0, false, eq }
 	}
 };
 
