@@ -3,6 +3,7 @@
 #include <cstring>
 #include <cctype>
 #include <cmath>
+#include <array>
 
 
 int opRank(char op);
@@ -22,13 +23,14 @@ const char* nextRank(const char* b, const char* e, char op);
 
 struct fidp
 {
-	const char* fname;
+	std::string fname;
 	double (*fptr)(double);
 };
 double cot(double x) { return cos(x) / sin(x); }
 double acot(double x) { return acos(-1.0)/2 - std::atan(x); }
-fidp fn[] =
+std::array<fidp, 18> fn =
 {
+	{
 	{"sin", std::sin},
 	{"cos", std::cos},
 	{"tan", std::tan},
@@ -38,7 +40,7 @@ fidp fn[] =
 	{"acos", std::acos},
 	{"atan", std::atan},
 	{"acot", acot},
-	
+
 	{"log", std::log},
 	{"ln", std::log},
 	{"log10", std::log10},
@@ -51,19 +53,22 @@ fidp fn[] =
 	{"floor", std::floor},
 	{"ceil", std::ceil},
 	{"round", std::round}
+	}
 };
 //parses function name starting from b, stores id in id and returns pointer to last char of function name
 const char* fid(const char* b, const char* e, int& id);
 
 struct cidv
 {
-	const char* cname;
+	std::string cname;
 	double cval;
 };
-cidv c[]
+std::array<cidv,2> c =
 {
-	{"pi", acos(-1.0)},
-	{"e", exp(1.0)}
+	{
+	{"pi", std::acos(-1.0)},
+	{"e", std::exp(1.0)}
+	}
 };
 //parses constant name starting from b, stores id in id and returns pointer to last char of constant name
 const char* cid(const char* b, const char* e, int& id);
@@ -275,27 +280,37 @@ const char* nextRank(const char* b, const char* e, char op)
 const char* fid(const char* b, const char* e, int& id)
 {
 	id = -1;
-	for (int i = 0; i < sizeof(fn) / sizeof(fidp); i++)
+	size_t l_match = 0;
+	for (int i = 0; i < fn.size(); i++)
 	{
-		if (e - b < strlen(fn[i].fname)) { continue; }
-		bool r = memcmp(b, fn[i].fname, strlen(fn[i].fname));
-		if (r == 0) { id = i; }
+		const size_t c_size = fn[i].fname.size();
+		if (e - b < c_size) { continue; }
+		if(c_size > l_match && !memcmp(fn[i].fname.data(), b, c_size))
+		{
+			id = i;
+			l_match = c_size;
+		}
 	}
 
-	if (id >= 0) { b += strlen(fn[id].fname) - 1; }
+	if (id >= 0) { b += fn[id].fname.size() - 1; }
 	return b;
 }
 
 const char* cid(const char* b, const char* e, int& id)
 {
 	id = -1;
-	for (int i = 0; i < sizeof(c) / sizeof(cidv); i++)
+	size_t l_match = 0;
+	for (int i = 0; i < c.size(); i++)
 	{
-		if (e - b < strlen(c[i].cname)) { continue; }
-		bool r = memcmp(b, c[i].cname, strlen(c[i].cname));
-		if (r == 0) { id = i; }
+		const size_t c_size = c[i].cname.size();
+		if (e - b < c_size) { continue; }
+		if (c_size > l_match && !memcmp(c[i].cname.data(), b, c_size))
+		{
+			id = i;
+			l_match = c_size;
+		}
 	}
 
-	if (id >= 0) { b += strlen(c[id].cname) - 1; }
+	if (id >= 0) { b += c[id].cname.size() - 1; }
 	return b;
 }
