@@ -16,15 +16,19 @@ double add(double l, double r) { return l + r; }
 double sub(double l, double r) { return l - r; }
 double mul(double l, double r) { return l * r; }
 double div(double l, double r) { return l / r; }
-std::array<op, 6> operators =
+double neq(double l, double r) { return l != r; }
+double eq(double l, double r) { return l == r; }
+std::array<op, 8> operators =
 {
 	{
 	{"+", 1, true,  add      },
 	{"-", 1, true,  sub      },
-	{"*", 2, true,  mul      },
+	{"xx", 2, true,  mul      },
 	{"/", 2, true,  div      },
 	{"%", 2, true,  std::fmod},
-	{"^", 3, false, std::pow }
+	{"^", 3, false, std::pow },
+	{"!=", 0, false, neq },
+	{"==", 0, false, eq }
 	}
 };
 
@@ -147,7 +151,7 @@ double eval(const char* b, const char* e)
 		return NAN;
 	}
 	b++;
-	if (*b == '!')//factorial
+	if ( b < e && *b == '!')//factorial
 	{
 		s = tgamma(s + 1);
 		b++;
@@ -256,11 +260,19 @@ const char* next(const char* b, const char* e, unsigned int op_id)
 			{
 				if (operators[op_id].ltor)
 				{
-					if (operators[id].rank <= operators[op_id].rank) { break; }
+					if (operators[id].rank <= operators[op_id].rank) 
+					{
+						b -= operators[id].name.size() - 1;
+						break; 
+					}
 				}
 				else
 				{
-					if (operators[id].rank < operators[op_id].rank) { break; }
+					if (operators[id].rank < operators[op_id].rank) 
+					{
+						b -= operators[id].name.size() - 1;
+						break; 
+					}
 				}
 			}
 			l_op = true;
