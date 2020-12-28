@@ -5,10 +5,31 @@
 #include <cmath>
 #include <array>
 
+struct op
+{
+	const std::string name;
+	const unsigned int rank;
+	const bool ltor;//associativity
+	double (*fptr)(double, double);
+};
+double add(double l, double r) { return l + r; }
+double sub(double l, double r) { return l - r; }
+double mul(double l, double r) { return l * r; }
+double div(double l, double r) { return l / r; }
+std::array<op, 6> operators =
+{
+	{
+	{"+", 1, true,  add      },
+	{"-", 1, true,  sub      },
+	{"*", 2, true,  mul      },
+	{"/", 2, true,  div      },
+	{"%", 2, true,  std::fmod},
+	{"^", 3, false, std::pow }
+	}
+};
 
-int opRank(char op);
-
-bool isOp(char c);
+//parses operator name starting from b, stores id in id and returns pointer to last char of operator name
+const char* opid(const char* b, const char* e, int& id);
 
 //returns pointer to end of parenthesis starting at b
 const char* paEnd(const char* b, const char* e);
@@ -16,10 +37,8 @@ const char* paEnd(const char* b, const char* e);
 //parses real value starting from b, stores it in val and returns pointer to last char of value
 const char* num(const char* b, const char* e, double& val);
 
-double calc(double l, char op, double r);
-
-//returns pointer to next operator with respect to rank
-const char* nextRank(const char* b, const char* e, char op);
+//returns pointer to next operator with respect to op_id rank
+const char* next(const char* b, const char* e, unsigned int op_id);
 
 struct fidp
 {
@@ -136,20 +155,21 @@ double eval(const char* b, const char* e)
 
 	while (b < e)
 	{
-		char op;
-		if (!sign_op && isOp(*b))
+		int op_id;
+		b = opid(b, e, op_id);
+		if (!sign_op && op_id >= 0)
 		{
-			op = *b++;
+			b++;
 		}
 		else//implicit multiplication eg. 2pi, -pi
 		{
-			op = '*';
+			op_id = 2;
 			sign_op = false;
 		}
-		const char* next_op = nextRank(b, e, op);
+		const char* next_op = next(b, e, op_id);
 		double ps = 0;
 		ps = eval(b, next_op);
-		s = calc(s, op, ps);
+		s = operators[op_id].fptr(s, ps);
 
 		b = next_op;
 	}
@@ -167,19 +187,6 @@ double eval(const std::string& e)
 	}
 
 	return eval(p.data(), p.data() + p.size());
-}
-
-int opRank(char op)
-{
-	if (op == '+' || op == '-') { return 1; }
-	if (op == '*' || op == '/' || op == '%') { return 2; }
-	if (op == '^') { return 3; }
-	return 999;
-}
-
-bool isOp(char c)
-{
-	return c == '+' || c == '-' || c == '*' || c == '/' || c == '%' || c == '^';
 }
 
 const char* paEnd(const char* b, const char* e)
@@ -231,47 +238,37 @@ const char* num(const char* b, const char* e, double& val)
 	return b + len - 1;
 }
 
-double calc(double l, char op, double r)
-{
-	switch (op)
-	{
-	case '+':
-		return l + r;
-	case '-':
-		return l - r;
-	case '*':
-		return l * r;
-	case '/':
-		return l / r;
-	case '%':
-		return fmod(l, r);
-	case '^':
-		return pow(l, r);
-	}
-	return NAN;
-}
-
-const char* nextRank(const char* b, const char* e, char op)
+const char* next(const char* b, const char* e, unsigned int op_id)
 {
 	bool l_op = true;
-	while (b != e)
+	while (b < e)
 	{
 		if (*b == '(')
 		{
 			b = paEnd(b, e);
 		}
-		if (!l_op)//handle expression like x*-y
+
+		int id;
+		b = opid(b, e, id);
+		if (id >= 0)
 		{
-			if (op == '^')
+			if (!l_op)//handle expression like x*-y
 			{
-				if (opRank(*b) < opRank(op)) { break; }
+				if (operators[op_id].ltor)
+				{
+					if (operators[id].rank <= operators[op_id].rank) { break; }
+				}
+				else
+				{
+					if (operators[id].rank < operators[op_id].rank) { break; }
+				}
 			}
-			else
-			{
-				if (opRank(*b) <= opRank(op)) { break; }
-			}
+			l_op = true;
 		}
-		l_op = isOp(*b);
+		else
+		{
+			l_op = false;
+		}
 		b++;
 	}
 	return b;
@@ -312,5 +309,24 @@ const char* cid(const char* b, const char* e, int& id)
 	}
 
 	if (id >= 0) { b += c[id].cname.size() - 1; }
+	return b;
+}
+
+const char* opid(const char* b, const char* e, int& id)
+{
+	id = -1;
+	size_t l_match = 0;
+	for (int i = 0; i < operators.size(); i++)
+	{
+		const size_t c_size = operators[i].name.size();
+		if (e - b < c_size) { continue; }
+		if (c_size > l_match && !memcmp(operators[i].name.data(), b, c_size))
+		{
+			id = i;
+			l_match = c_size;
+		}
+	}
+
+	if (id >= 0) { b += operators[id].name.size() - 1; }
 	return b;
 }
