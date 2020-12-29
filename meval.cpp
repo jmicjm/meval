@@ -4,6 +4,8 @@
 #include <cctype>
 #include <cmath>
 #include <array>
+#include <vector>
+
 
 struct op
 {
@@ -28,7 +30,7 @@ std::array<op, 6> operators =
 	}
 };
 
-//parses operator name starting from b, stores id in id and returns pointer to last char of operator name
+//parses operator name starting from b, stores operator id in id and returns pointer to last char of operator name
 const char* opid(const char* b, const char* e, int& id);
 
 //returns pointer to end of parenthesis starting at b
@@ -320,19 +322,105 @@ const char* cid(const char* b, const char* e, int& id)
 	return b;
 }
 
-const char* opid(const char* b, const char* e, int& id)
+
+struct op_seq_node
 {
-	id = -1;
-	size_t l_match = 0;
+	int id = -1;
+	std::vector<op_seq_node> ids;
+};
+
+void build(const char* b, const char* e, op_seq_node& n)
+{
 	for (int i = 0; i < operators.size(); i++)
 	{
 		const size_t c_size = operators[i].name.size();
 		if (e - b < c_size) { continue; }
-		if (c_size > l_match && !memcmp(operators[i].name.data(), b, c_size))
+		if (!memcmp(operators[i].name.data(), b, c_size))
 		{
-			id = i;
-			l_match = c_size;
+			op_seq_node tmp;
+			tmp.id = i;
+			n.ids.push_back(tmp);
 		}
+	}
+	for (int i = 0; i < n.ids.size(); i++)
+	{
+		size_t len = operators[n.ids[i].id].name.size();
+		build(b+len, e, n.ids[i]);
+	}
+}
+//returns length(in characters) of longest node of n, if rem==true removes everything except longest nodes
+size_t nlen(op_seq_node& n, bool rem)
+{
+	size_t len = operators[n.id].name.size();
+	std::vector<size_t> lens(n.ids.size());
+
+	size_t max = 0;
+	for (int i = 0; i < n.ids.size(); i++)
+	{
+		lens[i] = nlen(n.ids[i], false);
+		if (lens[i] > max)
+		{
+			max = lens[i];
+		}
+	}
+	if (rem)
+	{
+		for (int i = 0; i < n.ids.size(); i++)
+		{
+			if (lens[i] != max)
+			{
+				n.ids.erase(n.ids.begin()+i);
+			}
+		}
+	}
+
+	return len + max;
+}
+//returns depth(in nodes) of shallowest node of n, if rem==true removes everything except shallowest nodes
+size_t ndepth(op_seq_node& n, bool rem)
+{
+	if (n.ids.size() > 0)
+	{
+		std::vector<size_t> depths(n.ids.size());
+
+		size_t min = ndepth(n.ids[0], false);
+		depths[0] = min;
+		for (int i = 1; i < n.ids.size(); i++)
+		{
+			depths[i] = ndepth(n.ids[i], false);
+			if (depths[i] < min)
+			{
+				min = depths[i];
+			}
+		}
+		if (rem)
+		{
+			for (int i = 0; i < n.ids.size(); i++)
+			{
+				if (depths[i] != min)
+				{
+					n.ids.erase(n.ids.begin() + i);
+				}
+			}
+		}
+		return 1 + min;
+	}
+	return 1;
+}
+//parses operator name starting from b, stores operator id in id and returns pointer to last char of operator name
+const char* opid(const char* b, const char* e, int& id)
+{
+	id = -1;
+
+	op_seq_node n;
+	build(b, e, n);
+
+	if (n.ids.size() > 0)
+	{
+		nlen(n, true);//remove everything except longest pathes
+		ndepth(n, true);//remove everything except shallowest nodes
+
+		id = n.ids[0].id;
 	}
 
 	if (id >= 0) { b += operators[id].name.size() - 1; }
