@@ -12,23 +12,63 @@ struct op
 	const std::string name;
 	const unsigned int rank;
 	const bool ltor;//associativity
-	double (*fptr)(double, double);
+	int posfix;//1 -> postfix, 0 -> prefix, -1 -> dous not apply
+	unsigned int n_ary;
+	union
+	{
+		double (*fbinary)(double, double);
+		double (*funary)(double);
+	};
+	op(const std::string& name, unsigned int rank, bool ltor, int posfix, unsigned int n_ary, double (*fbinary)(double, double))
+		: name(name), rank(rank), ltor(ltor), posfix(posfix), n_ary(n_ary), fbinary(fbinary) {}
+	op(const std::string& name, unsigned int rank, bool ltor, int posfix, unsigned int n_ary, double (*funary)(double))
+		: name(name), rank(rank), ltor(ltor), posfix(posfix), n_ary(n_ary), funary(funary) {}
 };
 double add(double l, double r) { return l + r; }
 double sub(double l, double r) { return l - r; }
 double mul(double l, double r) { return l * r; }
 double div(double l, double r) { return l / r; }
-std::array<op, 6> operators =
+double uplus(double x) { return x; }
+double umin(double x) { return -x; }
+double fct(double x) { return std::tgamma(x + 1); }
+std::array<op, 9> operators =
 {
 	{
-	{"+", 1, true,  add      },
-	{"-", 1, true,  sub      },
-	{"*", 2, true,  mul      },
-	{"/", 2, true,  div      },
-	{"%", 2, true,  std::fmod},
-	{"^", 3, false, std::pow }
+	{"+", 1, true,  -1, 2, add      },
+	{"-", 1, true,  -1, 2, sub      },
+	{"*", 2, true,  -1, 2, mul      },
+	{"/", 2, true,  -1, 2, div      },
+	{"%", 2, true,  -1, 2, std::fmod},
+	{"^", 3, false, -1, 2, std::pow },
+
+	{"+", 3, false,  0, 1, uplus    },
+	{"-", 3, false,  0, 1, umin     },
+	{"!", 9, true,   1, 1, fct      }
 	}
 };
+
+//checks if there is n_ary, postfix/prefix version of operator with provided id, if there is is return its id
+int xopid(int id, int n_ary, int postfix)
+{
+	if (operators[id].n_ary == n_ary && operators[id].posfix == postfix) { return id; }
+	const std::string& name = operators[id].name;
+	for (int i = 0; i < operators.size(); i++)
+	{
+		if (   operators[i].name   == name
+			&& operators[i].n_ary  == n_ary
+			&& operators[i].posfix == postfix)
+		{
+			return i;
+		}
+	}
+	return -1;
+}
+//binary operator id
+int bopid(int id)     { return xopid(id, 2, -1); }
+//unary prefix operator id
+int upreopid(int id)  { return xopid(id, 1, 0);  }
+//unary postfix operator id
+int upostopid(int id) { return xopid(id, 1, 1);  }
 
 //parses operator name starting from b, stores operator id in id and returns pointer to first char of operator name
 const char* opid(const char* b, const char* e, int& id);
@@ -99,11 +139,15 @@ double eval(const char* b, const char* e)
 {
 	double s = 0;
 
-	bool sign_op = false;
-	if (*b == '-' || *b == '+')//leading sign
+	int id;
+	const char* oe = opid(b, e, id);
+	id = upreopid(id);
+	if (id >=0)//unary prefix operator
 	{
-		s = (*b == '-') ? -1 : 1;
-		sign_op = true;
+		b = oe+1;
+		double ps = eval(b, next(b, e, id));
+		b = next(b, e, id) -1;
+		s = operators[id].funary(ps);
 	}
 	else if (isdigit(*b))//plain number
 	{
@@ -149,29 +193,36 @@ double eval(const char* b, const char* e)
 		return NAN;
 	}
 	b++;
-	if ( b < e && *b == '!')//factorial
+	oe = opid(b, e, id);
+	while (upostopid(id) >= 0)//unary postfix operator
 	{
-		s = tgamma(s + 1);
-		b++;
+		id = upostopid(id);
+		if (id >= 0)
+		{
+			s = operators[id].funary(s);
+			b = oe + 1;;
+		}
+		oe = opid(b, e, id);
 	}
 
+	//subsequent binary operators
 	while (b < e)
 	{
 		int op_id;
-		b = opid(b, e, op_id);
-		if (!sign_op && op_id >= 0)
+		oe = opid(b, e, op_id);
+		op_id = bopid(op_id);
+		if (op_id >= 0)
 		{
-			b++;
+			b=oe+1;
 		}
 		else//implicit multiplication eg. 2pi, -pi
 		{
 			op_id = 2;
-			sign_op = false;
 		}
 		const char* next_op = next(b, e, op_id);
 		double ps = 0;
 		ps = eval(b, next_op);
-		s = operators[op_id].fptr(s, ps);
+		s = operators[op_id].fbinary(s, ps);
 
 		b = next_op;
 	}
@@ -252,7 +303,7 @@ const char* next(const char* b, const char* e, unsigned int op_id)
 
 		int id;
 		b = opid(b, e, id);
-		if (id >= 0/*&& not unary postfix*/)//a!*!b
+		if (id >= 0 && upostopid(id) == -1)
 		{
 			if (!l_op)//handle expression like x*-y
 			{
