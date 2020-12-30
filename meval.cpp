@@ -26,11 +26,11 @@ std::array<op, 6> operators =
 	{"*", 2, true,  mul      },
 	{"/", 2, true,  div      },
 	{"%", 2, true,  std::fmod},
-	{"^", 3, false, std::pow },
+	{"^", 3, false, std::pow }
 	}
 };
 
-//parses operator name starting from b, stores operator id in id and returns pointer to last char of operator name
+//parses operator name starting from b, stores operator id in id and returns pointer to first char of operator name
 const char* opid(const char* b, const char* e, int& id);
 
 //returns pointer to end of parenthesis starting at b
@@ -252,7 +252,7 @@ const char* next(const char* b, const char* e, unsigned int op_id)
 
 		int id;
 		b = opid(b, e, id);
-		if (id >= 0)
+		if (id >= 0/*&& not unary postfix*/)//a!*!b
 		{
 			if (!l_op)//handle expression like x*-y
 			{
@@ -357,7 +357,7 @@ size_t nlen(op_seq_node& n, bool rem)
 	size_t max = 0;
 	for (int i = 0; i < n.ids.size(); i++)
 	{
-		lens[i] = nlen(n.ids[i], false);
+		lens[i] = nlen(n.ids[i], true);
 		if (lens[i] > max)
 		{
 			max = lens[i];
@@ -383,11 +383,11 @@ size_t ndepth(op_seq_node& n, bool rem)
 	{
 		std::vector<size_t> depths(n.ids.size());
 
-		size_t min = ndepth(n.ids[0], false);
+		size_t min = ndepth(n.ids[0], true);
 		depths[0] = min;
 		for (int i = 1; i < n.ids.size(); i++)
 		{
-			depths[i] = ndepth(n.ids[i], false);
+			depths[i] = ndepth(n.ids[i], true);
 			if (depths[i] < min)
 			{
 				min = depths[i];
@@ -407,7 +407,7 @@ size_t ndepth(op_seq_node& n, bool rem)
 	}
 	return 1;
 }
-//parses operator name starting from b, stores operator id in id and returns pointer to last char of operator name
+//parses operator name starting from b, stores operator id in id and returns pointer to first char of operator name
 const char* opid(const char* b, const char* e, int& id)
 {
 	id = -1;
@@ -417,6 +417,7 @@ const char* opid(const char* b, const char* e, int& id)
 
 	if (n.ids.size() > 0)
 	{
+		//todo: remove nodes with multiple binary operators eg. AB(b), C(u), D(u), CD(b) ABCD -> AB C D not AB CD
 		nlen(n, true);//remove everything except longest pathes
 		ndepth(n, true);//remove everything except shallowest nodes
 
