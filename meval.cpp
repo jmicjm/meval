@@ -12,17 +12,17 @@ struct op
 	const std::string name;
 	const unsigned int rank;
 	const bool ltor;//associativity
-	int posfix;//1 -> postfix, 0 -> prefix, -1 -> dous not apply
-	unsigned int n_ary;
+	const int postfix;//1 -> postfix, 0 -> prefix, -1 -> does not apply
+	const unsigned int n_ary;
 	union
 	{
-		double (*fbinary)(double, double);
-		double (*funary)(double);
+		double (* const fbinary)(double, double);
+		double (* const funary)(double);
 	};
-	op(const std::string& name, unsigned int rank, bool ltor, int posfix, unsigned int n_ary, double (*fbinary)(double, double))
-		: name(name), rank(rank), ltor(ltor), posfix(posfix), n_ary(n_ary), fbinary(fbinary) {}
-	op(const std::string& name, unsigned int rank, bool ltor, int posfix, unsigned int n_ary, double (*funary)(double))
-		: name(name), rank(rank), ltor(ltor), posfix(posfix), n_ary(n_ary), funary(funary) {}
+	op(const std::string& name, unsigned int rank, bool ltor, int postfix, unsigned int n_ary, double (* const fbinary)(double, double))
+		: name(name), rank(rank), ltor(ltor), postfix(postfix), n_ary(n_ary), fbinary(fbinary) {}
+	op(const std::string& name, unsigned int rank, bool ltor, int postfix, unsigned int n_ary, double (* const funary)(double))
+		: name(name), rank(rank), ltor(ltor), postfix(postfix), n_ary(n_ary), funary(funary) {}
 };
 double add(double l, double r) { return l + r; }
 double sub(double l, double r) { return l - r; }
@@ -47,16 +47,16 @@ std::array<op, 9> operators =
 	}
 };
 
-//checks if there is n_ary, postfix/prefix version of operator with provided id, if there is is return its id
+//checks if there is n_ary, postfix/prefix version of operator with provided id, if there is return its id
 int xopid(int id, int n_ary, int postfix)
 {
-	if (operators[id].n_ary == n_ary && operators[id].posfix == postfix) { return id; }
+	if (operators[id].n_ary == n_ary && operators[id].postfix == postfix) { return id; }
 	const std::string& name = operators[id].name;
 	for (int i = 0; i < operators.size(); i++)
 	{
-		if (   operators[i].name   == name
-			&& operators[i].n_ary  == n_ary
-			&& operators[i].posfix == postfix)
+		if (   operators[i].name    == name
+			&& operators[i].n_ary   == n_ary
+			&& operators[i].postfix == postfix)
 		{
 			return i;
 		}
@@ -70,7 +70,7 @@ int upreopid(int id)  { return xopid(id, 1, 0);  }
 //unary postfix operator id
 int upostopid(int id) { return xopid(id, 1, 1);  }
 
-//parses operator name starting from b, stores operator id in id and returns pointer to first char of operator name
+//parses operator name starting from b, stores operator id in id and returns pointer to last char of operator name
 const char* opid(const char* b, const char* e, int& id);
 
 //returns pointer to end of parenthesis starting at b
@@ -139,15 +139,18 @@ double eval(const char* b, const char* e)
 {
 	double s = 0;
 
-	int id;
-	const char* oe = opid(b, e, id);
-	id = upreopid(id);
-	if (id >=0)//unary prefix operator
+	int op_id;
+	const char* op_e = opid(b, e, op_id);
+	op_id = upreopid(op_id);
+	if (op_id >=0)//unary prefix operator
 	{
-		b = oe+1;
-		double ps = eval(b, next(b, e, id));
-		b = next(b, e, id) -1;
-		s = operators[id].funary(ps);
+		b = op_e+1;
+
+		const char* next_op = next(b, e, op_id);
+		double ps = eval(b, next_op);	
+		s = operators[op_id].funary(ps);
+
+		b = next_op - 1;
 	}
 	else if (isdigit(*b))//plain number
 	{
@@ -193,35 +196,33 @@ double eval(const char* b, const char* e)
 		return NAN;
 	}
 	b++;
-	oe = opid(b, e, id);
-	while (upostopid(id) >= 0)//unary postfix operator
+	op_e = opid(b, e, op_id);
+	while (upostopid(op_id) >= 0)//unary postfix operators
 	{
-		id = upostopid(id);
-		if (id >= 0)
+		op_id = upostopid(op_id);
+		if (op_id >= 0)
 		{
-			s = operators[id].funary(s);
-			b = oe + 1;;
+			s = operators[op_id].funary(s);
+			b = op_e + 1;
 		}
-		oe = opid(b, e, id);
+		op_e = opid(b, e, op_id);
 	}
 
 	//subsequent binary operators
 	while (b < e)
 	{
-		int op_id;
-		oe = opid(b, e, op_id);
+		op_e = opid(b, e, op_id);
 		op_id = bopid(op_id);
 		if (op_id >= 0)
 		{
-			b=oe+1;
+			b=op_e+1;
 		}
-		else//implicit multiplication eg. 2pi, -pi
+		else//implicit multiplication eg. 2pi
 		{
 			op_id = 2;
 		}
 		const char* next_op = next(b, e, op_id);
-		double ps = 0;
-		ps = eval(b, next_op);
+		double ps = eval(b, next_op);
 		s = operators[op_id].fbinary(s, ps);
 
 		b = next_op;
@@ -458,7 +459,7 @@ size_t ndepth(op_seq_node& n, bool rem)
 	}
 	return 1;
 }
-//parses operator name starting from b, stores operator id in id and returns pointer to first char of operator name
+//parses operator name starting from b, stores operator id in id and returns pointer to last char of operator name
 const char* opid(const char* b, const char* e, int& id)
 {
 	id = -1;
