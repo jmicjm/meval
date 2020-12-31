@@ -28,32 +28,36 @@ struct op
 		: name(name), rank(rank), ltor(ltor), postfix(postfix), n_ary(n_ary), funary(funary) {}
 };
 
-std::array<op, 19> operators =
+std::array<op, 23> operators =
 {
 	{
-	{"+",  4, true,  -1, 2, add      },
-	{"-",  4, true,  -1, 2, sub      },
-	{"*",  5, true,  -1, 2, mul      },
-	{"/",  5, true,  -1, 2, div      },
-	{"%",  5, true,  -1, 2, mfmod    },
-	{"^",  6, false, -1, 2, mpow     },
+	{"+",  5, true,  -1, 2, add      },
+	{"-",  5, true,  -1, 2, sub      },
+	{"*",  6, true,  -1, 2, mul      },
+	{"/",  6, true,  -1, 2, div      },
+	{"%",  6, true,  -1, 2, mfmod    },
+	{"^",  7, false, -1, 2, mpow     },
 
-	{"+",  6, false,  0, 1, uplus    },
-	{"-",  6, false,  0, 1, umin     },
+	{"+",  7, false,  0, 1, uplus    },
+	{"-",  7, false,  0, 1, umin     },
 	{"!",  9, true,   1, 1, fct      },
 
-	{"<",  3, true,  -1, 2, lt       },
-	{">",  3, true,  -1, 2, gt       },
-	{"<=", 3, true,  -1, 2, elt      },
-	{">=", 3, true,  -1, 2, egt      },
-	{"==", 2, true,  -1, 2, eq       },
-	{"!=", 2, true,  -1, 2, neq      },
+	{"<",  4, true,  -1, 2, lt       },
+	{">",  4, true,  -1, 2, gt       },
+	{"<=", 4, true,  -1, 2, elt      },
+	{">=", 4, true,  -1, 2, egt      },
+	{"==", 3, true,  -1, 2, eq       },
+	{"!=", 3, true,  -1, 2, neq      },
 
-	{"!",  6, false,  0, 1, lnot      },
-	{"&&", 1, true,  -1, 2, land      },
-	{"||", 0, true,  -1, 2, lor       },
+	{"!",  7, false,  0, 1, lnot     },
+	{"&&", 2, true,  -1, 2, land     },
+	{"||", 1, true,  -1, 2, lor      },
 
-	{"=", 0, true,  -1, 2,  assign  }
+	{"=",  0, false,  -1, 2,  assign     },
+	{"+=", 0, false,  -1, 2,  assignadd  },
+	{"-=", 0, false,  -1, 2,  assignsub  },
+	{"*=", 0, false,  -1, 2,  assignmul  },
+	{"/=", 0, false,  -1, 2,  assigndiv  }
 	}
 };
 
@@ -258,6 +262,7 @@ operand_t eval(const char* b, const char* e, state& st)
 					const char* asgn = opid(b + 1, e, assgn_id);
 					if (assgn_id >= 18)
 					{
+						
 						const char* next_op = next(b+1, e, assgn_id);
 						operand_t ps = eval(asgn+1, next_op, st);
 
@@ -572,12 +577,16 @@ size_t nlen(op_seq_node& n, bool rem)
 		}
 	}
 	if (rem)
-	{
-		for (int i = 0; i < n.ids.size(); i++)
+	{	
+		for (int i = 0; i < n.ids.size();)
 		{
 			if (lens[i] != max)
 			{
 				n.ids.erase(n.ids.begin()+i);
+			}
+			else
+			{
+				i++;
 			}
 		}
 	}
@@ -603,11 +612,15 @@ size_t ndepth(op_seq_node& n, bool rem)
 		}
 		if (rem)
 		{
-			for (int i = 0; i < n.ids.size(); i++)
+			for (int i = 0; i < n.ids.size();)
 			{
 				if (depths[i] != min)
 				{
 					n.ids.erase(n.ids.begin() + i);
+				}
+				else
+				{
+					i++;
 				}
 			}
 		}
@@ -623,6 +636,7 @@ const char* opid(const char* b, const char* e, int& id)
 	op_seq_node n;
 	build(b, e, n);
 
+	
 	if (n.ids.size() > 0)
 	{
 		//todo: remove nodes with multiple binary operators eg. AB(b), C(u), D(u), CD(b) ABCD -> AB C D not AB CD

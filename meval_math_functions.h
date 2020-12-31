@@ -28,4 +28,8 @@ operand_t acot(operand_t x) { return acos(-1.0) / 2 - std::atan(x); }
 operand_t mfmod(operand_t& l, operand_t& r) { return std::fmod(l,r); }
 operand_t mpow(operand_t& l, operand_t& r) { return std::pow(l,r); }
 
-operand_t assign(operand_t& l, operand_t& r) { return l = r; }
+operand_t assign(operand_t& l, operand_t& r)    { return l = r; }
+operand_t assignadd(operand_t& l, operand_t& r) { return l += r; }
+operand_t assignsub(operand_t& l, operand_t& r) { return l -= r; }
+operand_t assignmul(operand_t& l, operand_t& r) { return l *= r; }
+operand_t assigndiv(operand_t& l, operand_t& r) { return l /= r; }
