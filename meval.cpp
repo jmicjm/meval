@@ -28,22 +28,36 @@ double add(double l, double r) { return l + r; }
 double sub(double l, double r) { return l - r; }
 double mul(double l, double r) { return l * r; }
 double div(double l, double r) { return l / r; }
-double uplus(double x) { return x; }
-double umin(double x) { return -x; }
-double fct(double x) { return std::tgamma(x + 1); }
-std::array<op, 9> operators =
+double uplus(double x) { return x;  }
+double umin(double x)  { return -x; }
+double fct(double x)   { return std::tgamma(x + 1); }
+double eq(double l, double r)  { return l == r; }
+double neq(double l, double r) { return l != r; }
+double lt(double l, double r)  { return l < r;  }
+double gt(double l, double r)  { return l > r;  }
+double elt(double l, double r) { return l <= r; }
+double egt(double l, double r) { return l >= r; }
+
+std::array<op, 15> operators =
 {
 	{
-	{"+", 1, true,  -1, 2, add      },
-	{"-", 1, true,  -1, 2, sub      },
-	{"*", 2, true,  -1, 2, mul      },
-	{"/", 2, true,  -1, 2, div      },
-	{"%", 2, true,  -1, 2, std::fmod},
-	{"^", 3, false, -1, 2, std::pow },
+	{"+",  4, true,  -1, 2, add      },
+	{"-",  4, true,  -1, 2, sub      },
+	{"*",  5, true,  -1, 2, mul      },
+	{"/",  5, true,  -1, 2, div      },
+	{"%",  5, true,  -1, 2, std::fmod},
+	{"^",  6, false, -1, 2, std::pow },
 
-	{"+", 3, false,  0, 1, uplus    },
-	{"-", 3, false,  0, 1, umin     },
-	{"!", 9, true,   1, 1, fct      }
+	{"+",  6, false,  0, 1, uplus    },
+	{"-",  6, false,  0, 1, umin     },
+	{"!",  9, true,   1, 1, fct      },
+
+	{"<",  3, true,  -1, 2, lt       },
+	{">",  3, true,  -1, 2, gt       },
+	{"<=", 3, true,  -1, 2, elt      },
+	{">=", 3, true,  -1, 2, egt      },
+	{"==", 2, true,  -1, 2, eq       },
+	{"!=", 2, true,  -1, 2, neq      }
 	}
 };
 
