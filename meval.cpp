@@ -7,6 +7,8 @@
 #include <array>
 #include <vector>
 
+#include <iostream>
+
 
 struct op
 {
@@ -17,24 +19,24 @@ struct op
 	const unsigned int n_ary;
 	union
 	{
-		operand_t (* const fbinary)(operand_t, operand_t);
-		operand_t (* const funary)(operand_t);
+		operand_t (* const fbinary)(operand_t&, operand_t&);
+		operand_t (* const funary)(operand_t&);
 	};
-	op(const std::string& name, unsigned int rank, bool ltor, int postfix, unsigned int n_ary, operand_t (* const fbinary)(operand_t, operand_t))
+	op(const std::string& name, unsigned int rank, bool ltor, int postfix, unsigned int n_ary, operand_t (* const fbinary)(operand_t&, operand_t&))
 		: name(name), rank(rank), ltor(ltor), postfix(postfix), n_ary(n_ary), fbinary(fbinary) {}
-	op(const std::string& name, unsigned int rank, bool ltor, int postfix, unsigned int n_ary, operand_t (* const funary)(operand_t))
+	op(const std::string& name, unsigned int rank, bool ltor, int postfix, unsigned int n_ary, operand_t (* const funary)(operand_t&))
 		: name(name), rank(rank), ltor(ltor), postfix(postfix), n_ary(n_ary), funary(funary) {}
 };
 
-std::array<op, 18> operators =
+std::array<op, 19> operators =
 {
 	{
 	{"+",  4, true,  -1, 2, add      },
 	{"-",  4, true,  -1, 2, sub      },
 	{"*",  5, true,  -1, 2, mul      },
 	{"/",  5, true,  -1, 2, div      },
-	{"%",  5, true,  -1, 2, std::fmod},
-	{"^",  6, false, -1, 2, std::pow },
+	{"%",  5, true,  -1, 2, mfmod    },
+	{"^",  6, false, -1, 2, mpow     },
 
 	{"+",  6, false,  0, 1, uplus    },
 	{"-",  6, false,  0, 1, umin     },
@@ -49,7 +51,9 @@ std::array<op, 18> operators =
 
 	{"!",  6, false,  0, 1, lnot      },
 	{"&&", 1, true,  -1, 2, land      },
-	{"||", 0, true,  -1, 2, lor       }
+	{"||", 0, true,  -1, 2, lor       },
+
+	{"=", 0, true,  -1, 2,  assign  }
 	}
 };
 
@@ -140,6 +144,30 @@ const char* cid(const char* b, const char* e, int& id);
 
 const char* nextscolon(const char* b, const char* e);
 
+std::array<std::string, 1> keywords
+{
+	"var"
+};
+
+const char* kid(const char* b, const char* e, int& id)//i really should make generic xid function
+{
+	id = -1;
+	size_t l_match = 0;
+	for (int i = 0; i < keywords.size(); i++)
+	{
+		const size_t c_size = keywords[i].size();
+		if (e - b < c_size) { continue; }
+		if (c_size > l_match && !memcmp(keywords[i].data(), b, c_size))
+		{
+			id = i;
+			l_match = c_size;
+		}
+	}
+
+	if (id >= 0) { b += keywords[id].size() - 1; }
+	return b;
+}
+
 struct variable
 {
 	std::string name;
@@ -226,7 +254,21 @@ operand_t eval(const char* b, const char* e, state& st)
 				b = varid(b, e, st.variables, id);
 				if (id >= 0)
 				{
-					s = st.variables[id].value;
+					int assgn_id;
+					const char* asgn = opid(b + 1, e, assgn_id);
+					if (assgn_id >= 18)
+					{
+						const char* next_op = next(b+1, e, assgn_id);
+						operand_t ps = eval(asgn+1, next_op, st);
+
+						s = operators[assgn_id].fbinary(st.variables[id].value, ps);
+
+						b = next_op - 1;
+					}
+					else
+					{
+						s = st.variables[id].value;
+					}
 				}
 				else
 				{
@@ -257,6 +299,8 @@ operand_t eval(const char* b, const char* e, state& st)
 	{
 		op_e = opid(b, e, op_id);
 		op_id = bopid(op_id);
+
+		if (op_id >= 18) { return NAN; }
 		if (op_id >= 0)
 		{
 			b=op_e+1;
@@ -283,7 +327,6 @@ operand_t eval(const char* b, const char* e, state& st)
 	return s;
 }
 
-variable parsevar(const char* b, const char* e, state& st);
 int variableexist(std::vector<variable>& vars, const std::string& var_name)
 {
 	for (int i = 0; i < vars.size(); i++)
@@ -310,36 +353,37 @@ operand_t eval(const std::string& e)
 
 	while (sc != nextscolon(sc, d_end))
 	{
-		variable v = parsevar(sc, nextscolon(sc, d_end), st);
-		int id = variableexist(st.variables, v.name);
-		if (id == -1)
+		int keid;
+		const char* ke = kid(sc, nextscolon(sc, d_end),keid);
+		sc = ke+1;
+		if (keid == 0)
 		{
-			st.variables.push_back(v);
+			variable v;
+			while (sc < d_end && isalpha(*sc))
+			{
+				v.name += *sc;
+				sc++;
+			}
+			int id = variableexist(st.variables, v.name);
+			if (id == -1)
+			{
+				st.variables.push_back(v);
+			}
+			else
+			{
+				return NAN;
+			}
+			eval(ke + 1, nextscolon(sc, d_end), st);
 		}
 		else
 		{
-			st.variables[id].value = v.value;
+			eval(ke, nextscolon(sc, d_end), st);
 		}
+
 		sc = nextscolon(sc, d_end)+1;
 	}
 
 	return eval(p.data(), f_sc, st);
-}
-
-variable parsevar(const char* b, const char* e, state& st)
-{
-	variable var;
-	while (b < e && isalpha(*b))
-	{
-		var.name += *b;
-		b++;
-	}
-	if (*b == '=')
-	{
-		var.value = eval(b+1, e, st);
-	}
-
-	return var;
 }
 
 const char* nextscolon(const char* b, const char* e)
