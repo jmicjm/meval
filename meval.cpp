@@ -243,8 +243,15 @@ double eval(const char* b, const char* e)
 			op_id = 2;
 		}
 		const char* next_op = next(b, e, op_id);
-		double ps = eval(b, next_op);
-		if (std::isnan(ps)) { return NAN; }
+		if (next_op == b) { return NAN; }
+
+		double ps = 0;
+		if (!(op_id == 17 && s || op_id == 16 && !s))//|| && short circuit
+		{
+			ps = eval(b, next_op);
+		}
+		
+		if (std::isnan(s) || std::isnan(ps)) { return NAN; }
 		s = operators[op_id].fbinary(s, ps);
 
 		b = next_op;
