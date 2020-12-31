@@ -138,8 +138,40 @@ std::array<cidv,2> c =
 //parses constant name starting from b, stores id in id and returns pointer to last char of constant name
 const char* cid(const char* b, const char* e, int& id);
 
+const char* nextscolon(const char* b, const char* e);
+
+struct variable
+{
+	std::string name;
+	operand_t value;
+};
+
+struct state
+{
+	std::vector<variable> variables;
+	//functions
+};
+const char* varid(const char* b, const char* e, std::vector<variable>& vars, int& id)
+{
+	id = -1;
+	size_t l_match = 0;
+	for (int i = 0; i < vars.size(); i++)
+	{
+		const size_t c_size = vars[i].name.size();
+		if (e - b < c_size) { continue; }
+		if (c_size > l_match && !memcmp(vars[i].name.data(), b, c_size))
+		{
+			id = i;
+			l_match = c_size;
+		}
+	}
+
+	if (id >= 0) { b += vars[id].name.size() - 1; }
+	return b;
+}
+
 //evaluates expression between b and e
-operand_t eval(const char* b, const char* e)
+operand_t eval(const char* b, const char* e, state& st)
 {
 	operand_t s = 0;
 
@@ -151,7 +183,7 @@ operand_t eval(const char* b, const char* e)
 		b = op_e+1;
 
 		const char* next_op = next(b, e, op_id);
-		operand_t ps = eval(b, next_op);	
+		operand_t ps = eval(b, next_op, st);	
 		s = operators[op_id].funary(ps);
 
 		b = next_op - 1;
@@ -162,10 +194,10 @@ operand_t eval(const char* b, const char* e)
 	}
 	else if (*b == '(')//sub expression
 	{
-		s = eval(b+1, paEnd(b, e));
+		s = eval(b+1, paEnd(b, e), st);
 		b = paEnd(b, e);
 	}
-	else if (isalpha(*b))//functions and constants
+	else if (isalpha(*b))//functions, constants and variables
 	{
 		int id;
 		b = fid(b, e, id);
@@ -174,7 +206,7 @@ operand_t eval(const char* b, const char* e)
 			b++;
 			if (*b == '(')
 			{
-				s = fn[id].fptr(eval(b+1, paEnd(b, e)));
+				s = fn[id].fptr(eval(b+1, paEnd(b, e), st));
 				b = paEnd(b, e);
 			}
 			else
@@ -191,7 +223,15 @@ operand_t eval(const char* b, const char* e)
 			}
 			else
 			{
-				return NAN;
+				b = varid(b, e, st.variables, id);
+				if (id >= 0)
+				{
+					s = st.variables[id].value;
+				}
+				else
+				{
+					return NAN;
+				}
 			}
 		}
 	}
@@ -231,7 +271,7 @@ operand_t eval(const char* b, const char* e)
 		operand_t ps = 0;
 		if (!(op_id == 17 && s || op_id == 16 && !s))//|| && short circuit
 		{
-			ps = eval(b, next_op);
+			ps = eval(b, next_op, st);
 		}
 		
 		if (std::isnan(s) || std::isnan(ps)) { return NAN; }
@@ -243,6 +283,16 @@ operand_t eval(const char* b, const char* e)
 	return s;
 }
 
+variable parsevar(const char* b, const char* e, state& st);
+int variableexist(std::vector<variable>& vars, const std::string& var_name)
+{
+	for (int i = 0; i < vars.size(); i++)
+	{
+		if (var_name == vars[i].name) { return i; }
+	}
+	return -1;
+}
+
 operand_t eval(const std::string& e)
 {
 	std::string p;
@@ -251,8 +301,58 @@ operand_t eval(const std::string& e)
 	{
 		if (e[i] != ' ') { p.push_back(e[i]); }
 	}
+	state st;
 
-	return eval(p.data(), p.data() + p.size());
+	const char* d_end = p.data() + p.size();
+
+	const char* const f_sc = nextscolon(p.data(), d_end);
+	const char* sc = f_sc+1;
+
+	while (sc != nextscolon(sc, d_end))
+	{
+		variable v = parsevar(sc, nextscolon(sc, d_end), st);
+		int id = variableexist(st.variables, v.name);
+		if (id == -1)
+		{
+			st.variables.push_back(v);
+		}
+		else
+		{
+			st.variables[id].value = v.value;
+		}
+		sc = nextscolon(sc, d_end)+1;
+	}
+
+	return eval(p.data(), f_sc, st);
+}
+
+variable parsevar(const char* b, const char* e, state& st)
+{
+	variable var;
+	while (b < e && isalpha(*b))
+	{
+		var.name += *b;
+		b++;
+	}
+	if (*b == '=')
+	{
+		var.value = eval(b+1, e, st);
+	}
+
+	return var;
+}
+
+const char* nextscolon(const char* b, const char* e)
+{
+	while (b < e && *b != ';')
+	{
+		if (*b != '(') { b++; }
+		else
+		{
+			b = paEnd(b, e) + 1;
+		}
+	}
+	return b;
 }
 
 const char* paEnd(const char* b, const char* e)
