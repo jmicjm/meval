@@ -1,4 +1,6 @@
 #pragma once
 #include <string>
 
-double eval(const std::string& expresion);
+using operand_t = double;
+
+operand_t eval(const std::string& expresion);

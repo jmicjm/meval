@@ -16,30 +16,30 @@ struct op
 	const unsigned int n_ary;
 	union
 	{
-		double (* const fbinary)(double, double);
-		double (* const funary)(double);
+		operand_t (* const fbinary)(operand_t, operand_t);
+		operand_t (* const funary)(operand_t);
 	};
-	op(const std::string& name, unsigned int rank, bool ltor, int postfix, unsigned int n_ary, double (* const fbinary)(double, double))
+	op(const std::string& name, unsigned int rank, bool ltor, int postfix, unsigned int n_ary, operand_t (* const fbinary)(operand_t, operand_t))
 		: name(name), rank(rank), ltor(ltor), postfix(postfix), n_ary(n_ary), fbinary(fbinary) {}
-	op(const std::string& name, unsigned int rank, bool ltor, int postfix, unsigned int n_ary, double (* const funary)(double))
+	op(const std::string& name, unsigned int rank, bool ltor, int postfix, unsigned int n_ary, operand_t (* const funary)(operand_t))
 		: name(name), rank(rank), ltor(ltor), postfix(postfix), n_ary(n_ary), funary(funary) {}
 };
-double add(double l, double r) { return l + r; }
-double sub(double l, double r) { return l - r; }
-double mul(double l, double r) { return l * r; }
-double div(double l, double r) { return l / r; }
-double uplus(double x) { return x;  }
-double umin(double x)  { return -x; }
-double fct(double x)   { return std::tgamma(x + 1); }
-double eq(double l, double r)  { return l == r; }
-double neq(double l, double r) { return l != r; }
-double lt(double l, double r)  { return l < r;  }
-double gt(double l, double r)  { return l > r;  }
-double elt(double l, double r) { return l <= r; }
-double egt(double l, double r) { return l >= r; }
-double lnot(double x) { return !x; }
-double land(double l, double r) { return l && r; }
-double lor(double l, double r)  { return l || r; }
+operand_t add(operand_t l, operand_t r) { return l + r; }
+operand_t sub(operand_t l, operand_t r) { return l - r; }
+operand_t mul(operand_t l, operand_t r) { return l * r; }
+operand_t div(operand_t l, operand_t r) { return l / r; }
+operand_t uplus(operand_t x) { return x;  }
+operand_t umin(operand_t x)  { return -x; }
+operand_t fct(operand_t x)   { return std::tgamma(x + 1); }
+operand_t eq(operand_t l, operand_t r)  { return l == r; }
+operand_t neq(operand_t l, operand_t r) { return l != r; }
+operand_t lt(operand_t l, operand_t r)  { return l < r;  }
+operand_t gt(operand_t l, operand_t r)  { return l > r;  }
+operand_t elt(operand_t l, operand_t r) { return l <= r; }
+operand_t egt(operand_t l, operand_t r) { return l >= r; }
+operand_t lnot(operand_t x) { return !x; }
+operand_t land(operand_t l, operand_t r) { return l && r; }
+operand_t lor(operand_t l, operand_t r)  { return l || r; }
 
 std::array<op, 18> operators =
 {
@@ -98,7 +98,7 @@ const char* opid(const char* b, const char* e, int& id);
 const char* paEnd(const char* b, const char* e);
 
 //parses real value starting from b, stores it in val and returns pointer to last char of value
-const char* num(const char* b, const char* e, double& val);
+const char* num(const char* b, const char* e, operand_t& val);
 
 //returns pointer to next operator with respect to op_id rank
 const char* next(const char* b, const char* e, unsigned int op_id);
@@ -106,10 +106,10 @@ const char* next(const char* b, const char* e, unsigned int op_id);
 struct fidp
 {
 	std::string fname;
-	double (*fptr)(double);
+	operand_t (*fptr)(operand_t);
 };
-double cot(double x) { return cos(x) / sin(x); }
-double acot(double x) { return acos(-1.0)/2 - std::atan(x); }
+operand_t cot(operand_t x) { return cos(x) / sin(x); }
+operand_t acot(operand_t x) { return acos(-1.0)/2 - std::atan(x); }
 std::array<fidp, 18> fn =
 {
 	{
@@ -143,7 +143,7 @@ const char* fid(const char* b, const char* e, int& id);
 struct cidv
 {
 	std::string cname;
-	double cval;
+	operand_t cval;
 };
 std::array<cidv,2> c =
 {
@@ -156,9 +156,9 @@ std::array<cidv,2> c =
 const char* cid(const char* b, const char* e, int& id);
 
 //evaluates expression between b and e
-double eval(const char* b, const char* e)
+operand_t eval(const char* b, const char* e)
 {
-	double s = 0;
+	operand_t s = 0;
 
 	int op_id;
 	const char* op_e = opid(b, e, op_id);
@@ -168,7 +168,7 @@ double eval(const char* b, const char* e)
 		b = op_e+1;
 
 		const char* next_op = next(b, e, op_id);
-		double ps = eval(b, next_op);	
+		operand_t ps = eval(b, next_op);	
 		s = operators[op_id].funary(ps);
 
 		b = next_op - 1;
@@ -245,7 +245,7 @@ double eval(const char* b, const char* e)
 		const char* next_op = next(b, e, op_id);
 		if (next_op == b) { return NAN; }
 
-		double ps = 0;
+		operand_t ps = 0;
 		if (!(op_id == 17 && s || op_id == 16 && !s))//|| && short circuit
 		{
 			ps = eval(b, next_op);
@@ -260,7 +260,7 @@ double eval(const char* b, const char* e)
 	return s;
 }
 
-double eval(const std::string& e)
+operand_t eval(const std::string& e)
 {
 	std::string p;
 
@@ -286,7 +286,7 @@ const char* paEnd(const char* b, const char* e)
 	return std::min(b, e);
 }
 
-const char* num(const char* b, const char* e, double& val)
+const char* num(const char* b, const char* e, operand_t& val)
 {
 	unsigned int len = 0;
 	unsigned int dot_p = e - b;
@@ -304,7 +304,7 @@ const char* num(const char* b, const char* e, double& val)
 
 	val = 0;
 
-	double mul = 1;
+	operand_t mul = 1;
 	for (int i = dot_p - 1; i >= 0; i--)
 	{
 		val += (b[i] - '0') * mul;
