@@ -244,6 +244,7 @@ double eval(const char* b, const char* e)
 		}
 		const char* next_op = next(b, e, op_id);
 		double ps = eval(b, next_op);
+		if (std::isnan(ps)) { return NAN; }
 		s = operators[op_id].fbinary(s, ps);
 
 		b = next_op;
