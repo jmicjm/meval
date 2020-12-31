@@ -37,8 +37,11 @@ double lt(double l, double r)  { return l < r;  }
 double gt(double l, double r)  { return l > r;  }
 double elt(double l, double r) { return l <= r; }
 double egt(double l, double r) { return l >= r; }
+double lnot(double x) { return !x; }
+double land(double l, double r) { return l && r; }
+double lor(double l, double r)  { return l || r; }
 
-std::array<op, 15> operators =
+std::array<op, 18> operators =
 {
 	{
 	{"+",  4, true,  -1, 2, add      },
@@ -57,7 +60,11 @@ std::array<op, 15> operators =
 	{"<=", 3, true,  -1, 2, elt      },
 	{">=", 3, true,  -1, 2, egt      },
 	{"==", 2, true,  -1, 2, eq       },
-	{"!=", 2, true,  -1, 2, neq      }
+	{"!=", 2, true,  -1, 2, neq      },
+
+	{"!",  6, false,  0, 1, lnot      },
+	{"&&", 1, true,  -1, 2, land      },
+	{"||", 0, true,  -1, 2, lor       }
 	}
 };
 
