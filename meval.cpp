@@ -128,8 +128,7 @@ std::array<fidp, 18> fn =
 	{"round", std::round}
 	}
 };
-//parses function name starting from b, stores id in id and returns pointer to last char of function name
-const char* fid(const char* b, const char* e, int& id);
+
 
 struct cidv
 {
@@ -143,34 +142,18 @@ std::array<cidv,2> c =
 	{"e", std::exp(1.0)}
 	}
 };
-//parses constant name starting from b, stores id in id and returns pointer to last char of constant name
-const char* cid(const char* b, const char* e, int& id);
+
 
 const char* nextscolon(const char* b, const char* e);
 
-std::array<std::string, 1> keywords
+struct kword
 {
-	"var"
+	std::string name;
 };
-
-const char* kid(const char* b, const char* e, int& id)//i really should make generic xid function
+std::array<kword, 1> keywords
 {
-	id = -1;
-	size_t l_match = 0;
-	for (int i = 0; i < keywords.size(); i++)
-	{
-		const size_t c_size = keywords[i].size();
-		if (e - b < c_size) { continue; }
-		if (c_size > l_match && !memcmp(keywords[i].data(), b, c_size))
-		{
-			id = i;
-			l_match = c_size;
-		}
-	}
-
-	if (id >= 0) { b += keywords[id].size() - 1; }
-	return b;
-}
+	{"var"}
+};
 
 struct variable
 {
@@ -178,29 +161,40 @@ struct variable
 	operand_t value;
 };
 
-struct state
-{
-	std::vector<variable> variables;
-	//functions
-};
-const char* varid(const char* b, const char* e, std::vector<variable>& vars, int& id)
+template<typename T, typename Y>
+const char* xid(const char* b, const char* e, int& id, T& c, std::string Y::* s_ptr)
 {
 	id = -1;
 	size_t l_match = 0;
-	for (int i = 0; i < vars.size(); i++)
+	for (int i = 0; i < c.size(); i++)
 	{
-		const size_t c_size = vars[i].name.size();
+		const size_t c_size = (c[i].*s_ptr).size();
 		if (e - b < c_size) { continue; }
-		if (c_size > l_match && !memcmp(vars[i].name.data(), b, c_size))
+		if (c_size > l_match && !memcmp((c[i].*s_ptr).data(), b, c_size))
 		{
 			id = i;
 			l_match = c_size;
 		}
 	}
 
-	if (id >= 0) { b += vars[id].name.size() - 1; }
+	if (id >= 0) { b += (c[id].*s_ptr).size() - 1; }
 	return b;
 }
+//parses constant name starting from b, stores id in id and returns pointer to last char of constant name
+const char* cid(const char* b, const char* e, int& id) { return xid(b, e, id, c, &cidv::cname); }
+//parses function name starting from b, stores id in id and returns pointer to last char of function name
+const char* fid(const char* b, const char* e, int& id) { return xid(b, e, id, fn, &fidp::fname); }
+//parses keyword name starting from b, stores id in id and returns pointer to last char of keyword name
+const char* kid(const char* b, const char* e, int& id) { return xid(b, e, id, keywords, &kword::name); }
+//parses variable name starting from b, stores id in id and returns pointer to last char of variable name
+const char* varid(const char* b, const char* e, std::vector<variable>& vars, int& id) { return xid(b, e, id, vars, &variable::name); }
+
+
+struct state
+{
+	std::vector<variable> variables;
+	//functions
+};
 
 //evaluates expression between b and e
 operand_t eval(const char* b, const char* e, state& st)
@@ -496,45 +490,6 @@ const char* next(const char* b, const char* e, unsigned int op_id)
 	}
 	return b;
 }
-
-const char* fid(const char* b, const char* e, int& id)
-{
-	id = -1;
-	size_t l_match = 0;
-	for (int i = 0; i < fn.size(); i++)
-	{
-		const size_t c_size = fn[i].fname.size();
-		if (e - b < c_size) { continue; }
-		if(c_size > l_match && !memcmp(fn[i].fname.data(), b, c_size))
-		{
-			id = i;
-			l_match = c_size;
-		}
-	}
-
-	if (id >= 0) { b += fn[id].fname.size() - 1; }
-	return b;
-}
-
-const char* cid(const char* b, const char* e, int& id)
-{
-	id = -1;
-	size_t l_match = 0;
-	for (int i = 0; i < c.size(); i++)
-	{
-		const size_t c_size = c[i].cname.size();
-		if (e - b < c_size) { continue; }
-		if (c_size > l_match && !memcmp(c[i].cname.data(), b, c_size))
-		{
-			id = i;
-			l_match = c_size;
-		}
-	}
-
-	if (id >= 0) { b += c[id].cname.size() - 1; }
-	return b;
-}
-
 
 struct op_seq_node
 {
