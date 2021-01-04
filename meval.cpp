@@ -380,7 +380,6 @@ operand_t evalScope(const char* const b, const char* const e, state& st)
 			{
 				sc = bracketEnd(ke, e);
 				evalScope(ke+1, sc, st);
-				sc+=2;
 			}
 			else
 			{
