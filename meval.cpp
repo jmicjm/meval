@@ -88,7 +88,9 @@ int upostopid(int id) { return xopid(id, 1, 1);  }
 const char* opid(const char* b, const char* e, int& id);
 
 //returns pointer to end of parenthesis starting at b
-const char* paEnd(const char* b, const char* e);
+const char* paEnd(const char* b, const char* e, char opening_c, char closng_c);
+const char* paEnd(const char* b, const char* e) { return paEnd(b, e, '(', ')'); }
+const char* bracketEnd(const char* b, const char* e) { return paEnd(b, e, '{', '}'); }
 
 //parses real value starting from b, stores it in val and returns pointer to last char of value
 const char* num(const char* b, const char* e, operand_t& val);
@@ -146,6 +148,7 @@ std::array<cidv,2> c =
 
 const char* nextscolon(const char* b, const char* e);
 
+
 struct kword
 {
 	std::string name;
@@ -166,7 +169,7 @@ const char* xid(const char* b, const char* e, int& id, T& c, std::string Y::* s_
 {
 	id = -1;
 	size_t l_match = 0;
-	for (int i = 0; i < c.size(); i++)
+	for (int i = c.size()-1; i >=0; i--)//reverse order so varid() will return newest variable(from current scope)
 	{
 		const size_t c_size = (c[i].*s_ptr).size();
 		if (e - b < c_size) { continue; }
@@ -326,13 +329,73 @@ operand_t eval(const char* b, const char* e, state& st)
 	return s;
 }
 
-int variableexist(std::vector<variable>& vars, const std::string& var_name)
+int variableExist(std::vector<variable>& vars, const std::string& var_name, size_t c)
 {
-	for (int i = 0; i < vars.size(); i++)
+	for (int i = 0; i < c; i++)
 	{
-		if (var_name == vars[i].name) { return i; }
+		if (var_name == vars[vars.size()-1-i].name) { return i; }
 	}
 	return -1;
+}
+
+operand_t evalScope(const char* const b, const char* const e, state& st)
+{
+	unsigned int var_c = 0;
+	bool invalid = false;
+
+	const char* const f_sc = nextscolon(b, e);
+	const char* sc = f_sc + 1;
+
+	while (sc != nextscolon(sc, e))
+	{
+		int keid;
+		const char* ke = kid(sc, nextscolon(sc, e), keid);
+		sc = ke + 1;
+
+		switch (keid)
+		{
+		case 0://var...
+			{
+				variable v;
+				while (sc < e && isalpha(*sc))
+				{
+					v.name += *sc;
+					sc++;
+				}
+				int id = variableExist(st.variables, v.name, var_c);//in current scope
+				if (id == -1)
+				{
+					st.variables.push_back(v);
+					var_c++;
+				}
+				else
+				{
+					invalid = true;
+				}
+				eval(ke + 1, nextscolon(sc, e), st);
+			}
+			break;
+		default:
+			if (*ke == '{')
+			{
+				sc = bracketEnd(ke, e);
+				evalScope(ke+1, sc, st);
+				sc+=2;
+			}
+			else
+			{
+				eval(ke, nextscolon(sc, e), st);
+			}
+		}
+
+		sc = nextscolon(sc, e) + 1;
+	}
+
+	operand_t result = eval(b, f_sc, st);
+
+	st.variables.erase(st.variables.end() - var_c, st.variables.end());//remove variables added in current scope
+
+	return invalid ? NAN : result;
 }
 
 operand_t eval(const std::string& e)
@@ -345,68 +408,38 @@ operand_t eval(const std::string& e)
 	}
 	state st;
 
-	const char* d_end = p.data() + p.size();
-
-	const char* const f_sc = nextscolon(p.data(), d_end);
-	const char* sc = f_sc+1;
-
-	while (sc != nextscolon(sc, d_end))
-	{
-		int keid;
-		const char* ke = kid(sc, nextscolon(sc, d_end),keid);
-		sc = ke+1;
-		if (keid == 0)
-		{
-			variable v;
-			while (sc < d_end && isalpha(*sc))
-			{
-				v.name += *sc;
-				sc++;
-			}
-			int id = variableexist(st.variables, v.name);
-			if (id == -1)
-			{
-				st.variables.push_back(v);
-			}
-			else
-			{
-				return NAN;
-			}
-			eval(ke + 1, nextscolon(sc, d_end), st);
-		}
-		else
-		{
-			eval(ke, nextscolon(sc, d_end), st);
-		}
-
-		sc = nextscolon(sc, d_end)+1;
-	}
-
-	return eval(p.data(), f_sc, st);
+	return evalScope(p.data(), p.data() + p.size(), st);
 }
 
 const char* nextscolon(const char* b, const char* e)
 {
 	while (b < e && *b != ';')
 	{
-		if (*b != '(') { b++; }
-		else
+		if (*b == '(')
 		{
 			b = paEnd(b, e) + 1;
+		}
+		else if (*b == '{')
+		{
+			b = bracketEnd(b, e) + 1;
+		}
+		else
+		{
+			b++;
 		}
 	}
 	return b;
 }
 
-const char* paEnd(const char* b, const char* e)
+const char* paEnd(const char* b, const char* e, char opening_c, char closing_c)
 {
 	b++;
-	while (b != e && *b != ')')
+	while (b != e && *b != closing_c)
 	{
-		if (*b != '(') { b++; }
+		if (*b != opening_c) { b++; }
 		else
 		{
-			b = paEnd(b, e) + 1;
+			b = paEnd(b, e, opening_c, closing_c) + 1;
 		}
 	}
 	return std::min(b, e);
