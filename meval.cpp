@@ -146,22 +146,32 @@ std::array<cidv,2> c =
 };
 
 
-const char* nextscolon(const char* b, const char* e);
+const char* nextc(const char* b, const char* e, char c);
+const char* nextscolon(const char* b, const char* e) { return nextc(b, e, ';'); }
+const char* nextcomma(const char* b, const char* e)  { return nextc(b, e, ','); }
 
 
 struct kword
 {
 	std::string name;
 };
-std::array<kword, 1> keywords
+std::array<kword, 2> keywords
 {
-	{"var"}
+	"var",
+	"fn"
 };
 
 struct variable
 {
 	std::string name;
 	operand_t value;
+};
+struct function
+{
+	std::string name;
+	std::vector<std::string> var_names;
+	const char* fb;
+	const char* fe;
 };
 
 template<typename T, typename Y>
@@ -192,12 +202,16 @@ const char* kid(const char* b, const char* e, int& id) { return xid(b, e, id, ke
 //parses variable name starting from b, stores id in id and returns pointer to last char of variable name
 const char* varid(const char* b, const char* e, std::vector<variable>& vars, int& id) { return xid(b, e, id, vars, &variable::name); }
 
+const char* fnid(const char* b, const char* e, std::vector<function>& functions, int& id) { return xid(b, e, id, functions, &function::name); }
+
 
 struct state
 {
 	std::vector<variable> variables;
-	//functions
+	std::vector<function> functions;
 };
+
+operand_t evalScope(const char* const b, const char* const e, state& st, bool returning);
 
 //evaluates expression between b and e
 operand_t eval(const char* b, const char* e, state& st)
@@ -252,29 +266,58 @@ operand_t eval(const char* b, const char* e, state& st)
 			}
 			else
 			{
-				b = varid(b, e, st.variables, id);
+				b = fnid(b, e, st.functions, id);
 				if (id >= 0)
-				{
-					int assgn_id;
-					const char* asgn = opid(b + 1, e, assgn_id);
-					if (assgn_id >= 18)
-					{
-						
-						const char* next_op = next(b+1, e, assgn_id);
-						operand_t ps = eval(asgn+1, next_op, st);
+				{			
+					b++;
+					const char* para_p_end = paEnd(b, e);		
+					b++;
 
-						s = operators[assgn_id].fbinary(st.variables[id].value, ps);
+					unsigned int var_c = 0;
 
-						b = next_op - 1;
-					}
-					else
+					while (b < para_p_end && *b != ')' && var_c < st.functions[id].var_names.size())
 					{
-						s = st.variables[id].value;
+						variable v;
+						v.name = st.functions[id].var_names[var_c];
+
+						v.value = eval(b, nextcomma(b, para_p_end), st);
+						st.variables.push_back(v);
+						var_c++;
+						b = nextcomma(b, para_p_end) + 1;
 					}
+
+					s = evalScope(st.functions[id].fb, st.functions[id].fe, st, true);
+
+					st.variables.erase(st.variables.end() - var_c, st.variables.end());
+					b = para_p_end;
 				}
 				else
 				{
-					return NAN;
+
+					b = varid(b, e, st.variables, id);
+					if (id >= 0)
+					{
+						int assgn_id;
+						const char* asgn = opid(b + 1, e, assgn_id);
+						if (assgn_id >= 18)
+						{
+
+							const char* next_op = next(b + 1, e, assgn_id);
+							operand_t ps = eval(asgn + 1, next_op, st);
+
+							s = operators[assgn_id].fbinary(st.variables[id].value, ps);
+
+							b = next_op - 1;
+						}
+						else
+						{
+							s = st.variables[id].value;
+						}
+					}
+					else
+					{
+						return NAN;
+					}
 				}
 			}
 		}
@@ -337,10 +380,19 @@ int variableExist(std::vector<variable>& vars, const std::string& var_name, size
 	}
 	return -1;
 }
+int functionExist(std::vector<function>& fns, const std::string& fn_name, size_t c)
+{
+	for (int i = 0; i < c; i++)
+	{
+		if (fn_name == fns[fns.size() - 1 - i].name) { return i; }
+	}
+	return -1;
+}
 
 operand_t evalScope(const char* const b, const char* const e, state& st, bool returning)
 {
 	unsigned int var_c = 0;
+	unsigned int fn_c = 0;
 	bool invalid = false;
 
 	const char* const f_sc = returning ? nextscolon(b, e) : b;
@@ -375,6 +427,43 @@ operand_t evalScope(const char* const b, const char* const e, state& st, bool re
 				eval(ke + 1, nextscolon(sc, e), st);
 			}
 			break;
+		case 1://fn...
+			{
+				function f;
+				while (sc < e && isalpha(*sc))
+				{
+					f.name += *sc;
+					sc++;
+				}
+				int id = functionExist(st.functions, f.name, fn_c);//in current scope
+				if (id == -1)
+				{	
+					while (sc < e && *sc != ')')
+					{
+						std::string par_name;
+						sc++;
+						while (sc < e && isalpha(*sc))
+						{
+							par_name += *sc;
+							sc++;
+						}
+						f.var_names.push_back(par_name);
+					}
+
+					sc++;
+					f.fb = sc+1;
+					sc = bracketEnd(sc, e);
+					f.fe = sc;
+
+					st.functions.push_back(f);
+					fn_c++;
+				}
+				else
+				{
+					invalid = true;
+				}
+			}
+			break;
 		default:
 			if (*ke == '{')
 			{
@@ -393,6 +482,7 @@ operand_t evalScope(const char* const b, const char* const e, state& st, bool re
 	operand_t result = returning ? eval(b, f_sc, st) : NAN;
 
 	st.variables.erase(st.variables.end() - var_c, st.variables.end());//remove variables added in current scope
+	st.functions.erase(st.functions.end() - fn_c, st.functions.end());//remove functions added in current scope
 
 	return invalid ? NAN : result;
 }
@@ -410,9 +500,9 @@ operand_t eval(const std::string& e)
 	return evalScope(p.data(), p.data() + p.size(), st, true);
 }
 
-const char* nextscolon(const char* b, const char* e)
+const char* nextc(const char* b, const char* e, char c)
 {
-	while (b < e && *b != ';')
+	while (b < e && *b != c)
 	{
 		if (*b == '(')
 		{
@@ -433,7 +523,7 @@ const char* nextscolon(const char* b, const char* e)
 const char* paEnd(const char* b, const char* e, char opening_c, char closing_c)
 {
 	b++;
-	while (b != e && *b != closing_c)
+	while (b < e && *b != closing_c)
 	{
 		if (*b != opening_c) { b++; }
 		else
