@@ -338,13 +338,13 @@ int variableExist(std::vector<variable>& vars, const std::string& var_name, size
 	return -1;
 }
 
-operand_t evalScope(const char* const b, const char* const e, state& st)
+operand_t evalScope(const char* const b, const char* const e, state& st, bool returning)
 {
 	unsigned int var_c = 0;
 	bool invalid = false;
 
-	const char* const f_sc = nextscolon(b, e);
-	const char* sc = f_sc + 1;
+	const char* const f_sc = returning ? nextscolon(b, e) : b;
+	const char* sc = returning ? f_sc + 1 : b;
 
 	while (sc != nextscolon(sc, e))
 	{
@@ -379,7 +379,7 @@ operand_t evalScope(const char* const b, const char* const e, state& st)
 			if (*ke == '{')
 			{
 				sc = bracketEnd(ke, e);
-				evalScope(ke+1, sc, st);
+				evalScope(ke+1, sc, st, false);
 			}
 			else
 			{
@@ -390,7 +390,7 @@ operand_t evalScope(const char* const b, const char* const e, state& st)
 		sc = nextscolon(sc, e) + 1;
 	}
 
-	operand_t result = eval(b, f_sc, st);
+	operand_t result = returning ? eval(b, f_sc, st) : NAN;
 
 	st.variables.erase(st.variables.end() - var_c, st.variables.end());//remove variables added in current scope
 
@@ -407,7 +407,7 @@ operand_t eval(const std::string& e)
 	}
 	state st;
 
-	return evalScope(p.data(), p.data() + p.size(), st);
+	return evalScope(p.data(), p.data() + p.size(), st, true);
 }
 
 const char* nextscolon(const char* b, const char* e)
