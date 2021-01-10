@@ -275,7 +275,7 @@ operand_t eval(const char* b, const char* e, state& st)
 
 					unsigned int var_c = 0;
 
-					while (b < para_p_end && *b != ')' && var_c < st.functions[id].var_names.size())
+					while (b < para_p_end)
 					{
 						variable v;
 						v.name = st.functions[id].var_names[var_c];
@@ -286,9 +286,15 @@ operand_t eval(const char* b, const char* e, state& st)
 						b = nextcomma(b, para_p_end) + 1;
 					}
 
-					s = evalScope(st.functions[id].fb, st.functions[id].fe, st, true);
+					bool valid_c = var_c == st.functions[id].var_names.size();
+
+					if (valid_c)
+					{
+						s = evalScope(st.functions[id].fb, st.functions[id].fe, st, true);
+					}
 
 					st.variables.erase(st.variables.end() - var_c, st.variables.end());
+					if (!valid_c) { return NAN; }
 					b = para_p_end;
 				}
 				else
