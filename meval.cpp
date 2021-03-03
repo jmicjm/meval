@@ -268,7 +268,7 @@ operand_t eval(const char* b, const char* e, state& st)
 			{
 				b = fnid(b, e, st.functions, id);
 				if (id >= 0)
-				{			
+				{		
 					b++;
 					const char* para_p_end = paEnd(b, e);		
 					b++;
@@ -278,12 +278,14 @@ operand_t eval(const char* b, const char* e, state& st)
 					while (b < para_p_end)
 					{
 						variable v;
-						v.name = st.functions[id].var_names[var_c];
+						v.name = var_c < st.functions[id].var_names.size() ? st.functions[id].var_names[var_c] : "";
 
 						v.value = eval(b, nextcomma(b, para_p_end), st);
 						st.variables.push_back(v);
-						var_c++;
+						
 						b = nextcomma(b, para_p_end) + 1;
+
+						var_c++;
 					}
 
 					bool valid_c = var_c == st.functions[id].var_names.size();
