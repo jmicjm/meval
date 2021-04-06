@@ -64,15 +64,18 @@ std::array<op, 23> operators =
 //checks if there is n_ary, postfix/prefix version of operator with provided id, if there is return its id
 int xopid(int id, int n_ary, int postfix)
 {
-	if (operators[id].n_ary == n_ary && operators[id].postfix == postfix) { return id; }
-	const std::string& name = operators[id].name;
-	for (int i = 0; i < operators.size(); i++)
+	if (id >= 0)
 	{
-		if (   operators[i].name    == name
-			&& operators[i].n_ary   == n_ary
-			&& operators[i].postfix == postfix)
+		if (operators[id].n_ary == n_ary && operators[id].postfix == postfix) { return id; }
+		const std::string& name = operators[id].name;
+		for (int i = 0; i < operators.size(); i++)
 		{
-			return i;
+			if (operators[i].name == name
+				&& operators[i].n_ary == n_ary
+				&& operators[i].postfix == postfix)
+			{
+				return i;
+			}
 		}
 	}
 	return -1;
@@ -649,7 +652,7 @@ void build(const char* b, const char* e, op_seq_node& n)
 //returns length(in characters) of longest node of n, if rem==true removes everything except longest nodes
 size_t nlen(op_seq_node& n, bool rem)
 {
-	size_t len = operators[n.id].name.size();
+	size_t len = n.id >= 0 ? operators[n.id].name.size() : 0;
 	std::vector<size_t> lens(n.ids.size());
 
 	size_t max = 0;
@@ -663,15 +666,11 @@ size_t nlen(op_seq_node& n, bool rem)
 	}
 	if (rem)
 	{	
-		for (int i = 0; i < n.ids.size();)
+		for (int i = n.ids.size()-1; i >=0;i--)
 		{
 			if (lens[i] != max)
 			{
 				n.ids.erase(n.ids.begin()+i);
-			}
-			else
-			{
-				i++;
 			}
 		}
 	}
@@ -697,15 +696,11 @@ size_t ndepth(op_seq_node& n, bool rem)
 		}
 		if (rem)
 		{
-			for (int i = 0; i < n.ids.size();)
+			for (int i = n.ids.size()-1; i >=0;i--)
 			{
 				if (depths[i] != min)
 				{
 					n.ids.erase(n.ids.begin() + i);
-				}
-				else
-				{
-					i++;
 				}
 			}
 		}
