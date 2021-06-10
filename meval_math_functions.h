@@ -25,7 +25,7 @@ operand_t lor(operand_t& l, operand_t& r)  { return l || r; }
 operand_t cot(operand_t x) { return cos(x) / sin(x); }
 operand_t acot(operand_t x) { return acos(-1.0) / 2 - std::atan(x); }
 
-operand_t mfmod(operand_t& l, operand_t& r) { return std::fmod(l,r); }
+operand_t mfmod(operand_t& l, operand_t& r) { operand_t m = std::fmod(l, r); return std::abs(m >= 0 ? m : m + r);/*abs->negative zero*/ }
 operand_t mpow(operand_t& l, operand_t& r) { return std::pow(l,r); }
 
 operand_t assign(operand_t& l, operand_t& r)    { return l = r; }
