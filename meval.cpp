@@ -140,11 +140,12 @@ struct cidv
 	std::string cname;
 	operand_t cval;
 };
-std::array<cidv,2> c =
+std::array<cidv,3> c =
 {
 	{
 	{"pi", std::acos(-1.0)},
-	{"e", std::exp(1.0)}
+	{"e", std::exp(1.0)},
+	{"deg", std::acos(-1.0)/180}
 	}
 };
 
