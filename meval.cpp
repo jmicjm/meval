@@ -274,8 +274,7 @@ operand_t eval(const char* b, const char* e, state& st)
 				if (id >= 0)
 				{		
 					b++;
-					const char* para_p_end = paEnd(b, e);		
-					b++;
+					const char* para_p_end = paEnd(b++, e);		
 
 					unsigned int var_c = 0;
 
@@ -423,8 +422,7 @@ operand_t evalScope(const char* const b, const char* const e, state& st, bool re
 				variable v;
 				while (sc < e && isalpha(*sc))
 				{
-					v.name += *sc;
-					sc++;
+					v.name += *sc++;
 				}
 				int id = variableExist(st.variables, v.name, var_c);//in current scope
 				if (id == -1)
@@ -444,8 +442,7 @@ operand_t evalScope(const char* const b, const char* const e, state& st, bool re
 				function f;
 				while (sc < e && isalpha(*sc))
 				{
-					f.name += *sc;
-					sc++;
+					f.name += *sc++;
 				}
 				int id = functionExist(st.functions, f.name, fn_c);//in current scope
 				if (id == -1)
@@ -456,8 +453,7 @@ operand_t evalScope(const char* const b, const char* const e, state& st, bool re
 						sc++;
 						while (sc < e && isalpha(*sc))
 						{
-							par_name += *sc;
-							sc++;
+							par_name += *sc++;
 						}
 						f.var_names.push_back(par_name);
 					}
